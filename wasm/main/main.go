@@ -10,14 +10,14 @@ import (
 
 const magnify = 1.0
 
-func JsRunApplet(code []byte) (*encode.Screens, error) {
+func JsRunApplet(code []byte, config map[string]string) (*encode.Screens, error) {
 	applet := runtime.Applet{}
 	err := applet.Load("code.star", code, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	roots, err := applet.Run(map[string]string{})
+	roots, err := applet.Run(config)
 	if err != nil {
 		return nil, err
 	}
@@ -26,13 +26,24 @@ func JsRunApplet(code []byte) (*encode.Screens, error) {
 }
 
 func JsRender(this js.Value, args []js.Value) (interface{}, error) {
-	if len(args) != 1 {
+	if len(args) < 1 {
 		return nil, fmt.Errorf("Invalid number of arguments!")
 	}
 
 	code := []byte(args[0].String())
+	config := map[string]string{}
 
-	screens, err := JsRunApplet(code)
+	if len(args) > 1 {
+		configValues := args[1]
+		for i := 0; i < configValues.Length(); i++ {
+			item := configValues.Index(i)
+			name := item.Get("name").String()
+			value := item.Get("value").String()
+			config[name] = value
+		}
+	}
+
+	screens, err := JsRunApplet(code, config)
 	if err != nil {
 		return nil, err
 	}
