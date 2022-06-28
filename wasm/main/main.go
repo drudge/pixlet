@@ -91,16 +91,11 @@ func JsCreateAsyncFunction(innerFunc JsFunction) js.Func {
 }
 
 func main() {
-	// Channel to keep program running.
-	quit := make(chan struct{}, 0)
-
+	done := make(chan bool)
 	runtime.InitCache(runtime.NewInMemoryCache())
 
-	fmt.Println("Creating 'window.pixlet.render' function...")
-
-	js.Global().Set("pixlet", js.ValueOf(map[string]interface{}{
+	js.Global().Set("pixlet", js.ValueOf(map[string]interface{} {
 		"render": JsCreateAsyncFunction(JsRender),
 	}))
-
-	<-quit
+	<-done
 }
