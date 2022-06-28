@@ -39,8 +39,17 @@ func (s *Screens) EncodeImageBitmapFrames() ([]js.Value, int32, error) {
 
 		width := rgba.Bounds().Dx()
 		height := rgba.Bounds().Dy()
-		data := JsImageData.New(buffer, width, height)
-		frame := jsCreateImageBitmap.Invoke(data)
+		frame := buffer
+		if !JsImageData.IsUndefined() && !jsCreateImageBitmap.IsUndefined() {
+			data := JsImageData.New(buffer, width, height)
+			frame = jsCreateImageBitmap.Invoke(data)
+		} else {
+			frame = js.ValueOf(map[string]interface{} {
+				"data": buffer,
+				"width": width,
+				"height": height,
+			})
+		}
 		frames = append(frames, frame)
 	}
 
