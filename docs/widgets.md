@@ -363,6 +363,10 @@ Each child widget is rendered for the duration of its
 frame count, then the next child wiget in the list will
 be rendered and so on.
 
+It comes in quite useful when chaining animations.
+If you want to know more about that, go check
+out the [animation](animation.md) documentation.
+
 #### Attributes
 | Name | Type | Description | Required |
 | --- | --- | --- | --- |
@@ -438,6 +442,10 @@ The optional `width` and `height` parameters limit the drawing
 area. If not set, WrappedText will use as much vertical and
 horizontal space as possible to fit the text.
 
+Alignment of the text is controlled by passing one of the following `align` values:
+- `"left"`: align text to the left
+- `"center"`: align text in the center
+- `"right"`: align text to the right
 #### Attributes
 | Name | Type | Description | Required |
 | --- | --- | --- | --- |
@@ -447,6 +455,7 @@ horizontal space as possible to fit the text.
 | `width` | `int` | Limits width of the area on which text may be drawn | N |
 | `linespacing` | `int` | Controls spacing between lines | N |
 | `color` | `color` | Desired font color | N |
+| `align` | `str` | Text Alignment | N |
 
 #### Example
 ```
