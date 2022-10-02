@@ -3,6 +3,7 @@ package humanize
 import (
 	"fmt"
 	"math"
+	"net/url"
 	"sync"
 	"time"
 
@@ -35,6 +36,7 @@ func LoadModule() (starlark.StringDict, error) {
 					"time":               starlark.NewBuiltin("time", times),
 					"relative_time":      starlark.NewBuiltin("relative_time", relativeTime),
 					"time_format":        starlark.NewBuiltin("time_format", convertTimeFormatter),
+					"day_of_week":        starlark.NewBuiltin("day_of_week", dayOfWeek),
 					"bytes":              starlark.NewBuiltin("bytes", bytes),
 					"parse_bytes":        starlark.NewBuiltin("parse_bytes", parseBytes),
 					"comma":              starlark.NewBuiltin("comma", comma),
@@ -46,12 +48,54 @@ func LoadModule() (starlark.StringDict, error) {
 					"plural_word":        starlark.NewBuiltin("plural_word", pluralWord),
 					"word_series":        starlark.NewBuiltin("word_series", wordSeries),
 					"oxford_word_series": starlark.NewBuiltin("oxford_word_series", oxfordWordSeries),
+					"url_encode":         starlark.NewBuiltin("url_encode", urlEncode),
+					"url_decode":         starlark.NewBuiltin("url_decode", urlDecode),
 				},
 			},
 		}
 	})
 
 	return module, nil
+}
+
+func urlEncode(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		starUrl starlark.String
+	)
+
+	if err := starlark.UnpackArgs(
+		"url_encode",
+		args, kwargs,
+		"str", &starUrl,
+	); err != nil {
+		return nil, fmt.Errorf("unpacking arguments for bytes: %s", err)
+	}
+
+	escapedUrl := url.QueryEscape(starUrl.GoString())
+
+	return starlark.String(escapedUrl), nil
+}
+
+func urlDecode(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		starUrl starlark.String
+	)
+
+	if err := starlark.UnpackArgs(
+		"url_decode",
+		args, kwargs,
+		"str", &starUrl,
+	); err != nil {
+		return nil, fmt.Errorf("unpacking arguments for bytes: %s", err)
+	}
+
+	unescapedUrl, decodeErr := url.QueryUnescape(starUrl.GoString())
+
+	if decodeErr != nil {
+		return nil, fmt.Errorf("unable to decode url: %s: %s", starUrl.GoString(), decodeErr)
+	}
+
+	return starlark.String(unescapedUrl), nil
 }
 
 func times(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -96,6 +140,23 @@ func convertTimeFormatter(thread *starlark.Thread, _ *starlark.Builtin, args sta
 	}
 
 	return starlark.String(formatted), nil
+}
+
+func dayOfWeek(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var (
+		starDate startime.Time
+	)
+
+	if err := starlark.UnpackArgs(
+		"day_of_week",
+		args, kwargs,
+		"date", &starDate,
+	); err != nil {
+		return nil, fmt.Errorf("unpacking arguments for time: %s", err)
+	}
+
+	date := time.Time(starDate)
+	return starlark.MakeInt(int(date.Weekday())), nil
 }
 
 func relativeTime(thread *starlark.Thread, _ *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

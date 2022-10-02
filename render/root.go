@@ -3,9 +3,10 @@ package render
 import (
 	"image"
 	"image/color"
+	"runtime"
 	"sync"
 
-	"github.com/fogleman/gg"
+	"github.com/tidbyt/gg"
 )
 
 const (
@@ -14,6 +15,9 @@ const (
 
 	// DefaultFrameHeight is the normal height for a frame.
 	DefaultFrameHeight = 32
+
+	// DefaultMaxFrameCount is the default maximum number of frames to render.
+	DefaultMaxFrameCount = 2000
 )
 
 // Every Widget tree has a Root.
@@ -38,28 +42,78 @@ type Root struct {
 	Child  Widget `starlark:"child,required"`
 	Delay  int32  `starlark:"delay"`
 	MaxAge int32  `starlark:"max_age"`
+
+	maxParallelFrames int
+	maxFrameCount     int
+}
+
+type RootPaintOption func(*Root)
+
+// WithMaxParallelFrames sets the maximum number of frames that will
+// be painted in parallel.
+//
+// By default, only `runtime.NumCPU()` frames are painted in parallel.
+// Higher parallelism consumes more memory, and doesn't usually make
+// sense since painting is CPU-bouond.
+func WithMaxParallelFrames(max int) RootPaintOption {
+	return func(r *Root) {
+		r.maxParallelFrames = max
+	}
+}
+
+// WithMaxFrameCount sets the maximum number of frames that will be
+// rendered when calling `Paint`.
+func WithMaxFrameCount(max int) RootPaintOption {
+	return func(r *Root) {
+		r.maxFrameCount = max
+	}
 }
 
 // Paint renders the child widget onto the frame. It doesn't do
 // any resizing or alignment.
-func (r Root) Paint(solidBackground bool) []image.Image {
+func (r Root) Paint(solidBackground bool, opts ...RootPaintOption) []image.Image {
+	for _, opt := range opts {
+		opt(&r)
+	}
+
+	if r.maxFrameCount <= 0 {
+		r.maxFrameCount = DefaultMaxFrameCount
+	}
+
 	numFrames := r.Child.FrameCount()
+	if numFrames > r.maxFrameCount {
+		numFrames = r.maxFrameCount
+	}
+
 	frames := make([]image.Image, numFrames)
 
+	parallelism := r.maxParallelFrames
+	if parallelism <= 0 {
+		parallelism = runtime.NumCPU()
+	}
+
 	var wg sync.WaitGroup
+	sem := make(chan bool, parallelism)
 	for i := 0; i < numFrames; i++ {
 		wg.Add(1)
+		sem <- true
+
 		go func(i int) {
+			defer func() {
+				<-sem
+				wg.Done()
+			}()
+
 			dc := gg.NewContext(DefaultFrameWidth, DefaultFrameHeight)
 			if solidBackground {
 				dc.SetColor(color.Black)
 				dc.Clear()
 			}
 
-			im := r.Child.Paint(image.Rect(0, 0, DefaultFrameWidth, DefaultFrameHeight), i)
-			dc.DrawImage(im, 0, 0)
+			dc.Push()
+			r.Child.Paint(dc, image.Rect(0, 0, DefaultFrameWidth, DefaultFrameHeight), i)
+			dc.Pop()
 			frames[i] = dc.Image()
-			wg.Done()
 		}(i)
 	}
 

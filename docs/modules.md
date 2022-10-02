@@ -28,6 +28,7 @@ individual modules, please refer to the Starlib documentation.
 
 | Module | Description |
 | --- | --- |
+| [`compress/gzip.star`](https://github.com/qri-io/starlib/blob/master/compress/gzip) | gzip decompressing |
 | [`encoding/base64.star`](https://github.com/qri-io/starlib/tree/master/encoding/base64) | Base 64 encoding and decoding |
 | [`encoding/csv.star`](https://github.com/qri-io/starlib/tree/master/encoding/csv) | CSV decoding |
 | [`encoding/json.star`](https://github.com/qri-io/starlib/tree/master/encoding/json) | JSON encoding and decoding |
@@ -71,6 +72,7 @@ The `humanize` module has formatters for units to human friendly sizes.
 | `time(date)` | Lets you take a `time.Time` and spit it out in relative terms. For example, `12 seconds ago` or `3 days from now`. |
 | `relative_time(date1, date2, label1?, label2?)` | Formats a time into a relative string. It takes two `time.Time`s and two labels. In addition to the generic time delta string (e.g. 5 minutes), the labels are used applied so that the label corresponding to the smaller time is applied. |
 | `time_format(format, date?)` | Takes a [Java SimpleDateFormat](https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html) and returns a [Go layout string](https://programming.guide/go/format-parse-string-time-date-example.html). If you pass it a `date`, it will apply the format using the converted layout string and return the formatted date. |
+| `day_of_week(date)` | Returns an integer corresponding to the day of the week, where 0 = Sunday, 6 = Saturday. |
 | `bytes(size, iec?)` | Lets you take numbers like `82854982` and convert them to useful strings like, `83 MB`. You can optionally format using IEC sizes like, `83 MiB`. |
 | `parse_bytes(formatted_size)` | Lets you take strings like `83 MB` and convert them to the number of bytes it represents like, `82854982`. |
 | `comma(num)` | Lets you take numbers like `123456` or `123456.78` and convert them to comma-separated numbers like `123,456` or `123,456.78`. |
@@ -82,6 +84,8 @@ The `humanize` module has formatters for units to human friendly sizes.
 | `plural_word(quantity, singular, plural?)` | Builds the plural form of an English word. The simple English rules of regular pluralization will be used if the plural form is an empty string (i.e. not explicitly given). |
 | `word_series(words, conjunction)` | Converts a list of words into a word series in English. It returns a string containing all the given words separated by commas, the coordinating conjunction, and a serial comma, as appropriate. |
 | `oxford_word_series(words, conjunction)` | Converts a list of words into a word series in English, using an [Oxford comma](https://en.wikipedia.org/wiki/Serial_comma). It returns a string containing all the given words separated by commas, the coordinating conjunction, and a serial comma, as appropriate. |
+| `url_encode(str)` | Escapes the string so it can be safely placed inside a URL query. |
+| `url_decode(str)` | The inverse of `url_encode`. Converts each 3-byte encoded substring of the form "%AB" into the hex-decoded byte 0xAB |
 
 Example:
 
@@ -170,6 +174,8 @@ The `sunrise` module calculates sunrise and sunset times for a given set of GPS 
 | --- | --- |
 | `sunrise(lat, lng, date)` | Calculates the sunrise time for a given location and date. |
 | `sunset(lat, lng, date)` | Calculates the sunset time for a given location and date. |
+| `elevation(lat, lng, time)` | Calculates the elevation of the sun above the horizon for a given location and point in time. |
+| `elevation_time(lat, lng, elev, date)` | Calculates the two times at which the sun was at the given elevation above the horizon for a given location and date. Returns None if the sun never reached the given elevation. |
 
 Example:
 
@@ -177,10 +183,11 @@ See [examples/sunrise.star](../examples/sunrise.star) for an example.
 
 ## Pixlet module: Random
 
-The `random` module provides a pseudorandom number generator for pixlet.
+The `random` module provides a pseudorandom number generator for pixlet. The generator is automatically seeded to a new random value on each execution, but a deterministic seed can also be set.
 
 | Function | Description |
 | --- | --- |
+| `seed(s)` | Seeds the generator.|
 | `number(min, max)` | Returns a random number between the min and max. The min has to be 0 or greater. The min has to be less then the max. |
 
 Example:
@@ -193,4 +200,49 @@ def main(config):
         print("You win!")
     else:
         print("Better luck next time!")
+```
+
+## Pixlet module: QRCode
+
+The `qrcode` module provides a QR code generator for pixlet!
+
+| Function | Description |
+| --- | --- |
+| `generate(url, size, color?, background?)` | Returns a QR code as an image that can be passed into the image widget. |
+
+Sizing works as follows:
+- `small`: 21x21 pixels
+- `medium`: 25x25 pixels
+- `large`: 29x29 pixels
+
+Note: we're working with some of the smallest possible QR codes in this module, so the amount of data that can be used for the URL is extremely limited.
+
+Example:
+```starlark
+load("cache.star", "cache")
+load("encoding/base64.star", "base64")
+load("render.star", "render")
+load("qrcode.star", "qrcode")
+
+def main(config):
+    url = "https://tidbyt.com?utm_source=pixlet_example"
+
+    data = cache.get(url)
+    if data == None:
+        code = qrcode.generate(
+            url = url,
+            size = "large",
+            color = "#fff",
+            background = "#000",
+        )
+        cache.set(url, base64.encode(code), ttl_seconds = 3600)
+    else:
+        code = base64.decode(data)
+
+    return render.Root(
+        child = render.Padding(
+            child = render.Image(src = code),
+            pad = 1,
+        ),
+    )
 ```

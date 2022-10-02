@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/color"
 	"image/draw"
 	"image/gif"
 
@@ -12,6 +13,7 @@ import (
 	_ "image/png"
 
 	"github.com/nfnt/resize"
+	"github.com/tidbyt/gg"
 )
 
 // Image renders the binary image data passed via `src`. Supported
@@ -38,8 +40,12 @@ type Image struct {
 	imgs []image.Image
 }
 
-func (p *Image) Paint(bounds image.Rectangle, frameIdx int) image.Image {
-	return p.imgs[ModInt(frameIdx, len(p.imgs))]
+func (p *Image) PaintBounds(bounds image.Rectangle, frameIdx int) image.Rectangle {
+	return p.imgs[ModInt(frameIdx, len(p.imgs))].Bounds()
+}
+
+func (p *Image) Paint(dc *gg.Context, bounds image.Rectangle, frameIdx int) {
+	dc.DrawImage(p.imgs[ModInt(frameIdx, len(p.imgs))], 0, 0)
 }
 
 func (p *Image) Size() (int, int) {
@@ -51,16 +57,6 @@ func (p *Image) FrameCount() int {
 }
 
 func (p *Image) InitFromGIF(data []byte) error {
-	// GIF support is quite limited and can't handle different
-	// positioned and sized frames, as well as disposal types.
-	//
-	// This means that many more optimized GIFs will not render
-	// correctly, with frame contents jumping around and previous
-	// frame contents always getting disposed, instead of kept.
-	//
-	// Unfortunatley the 'image/gif' package does not even expose
-	// frame positions, making it hard to implement these features.
-	//
 	// Consider using WebP instead.
 	img, err := gif.DecodeAll(bytes.NewReader(data))
 	if err != nil {
@@ -68,10 +64,53 @@ func (p *Image) InitFromGIF(data []byte) error {
 	}
 
 	p.Delay = img.Delay[0] * 10
-	for _, im := range img.Image {
-		imRGBA := image.NewRGBA(image.Rect(0, 0, im.Bounds().Dx(), im.Bounds().Dy()))
-		draw.Draw(imRGBA, imRGBA.Bounds(), im, image.Point{0, 0}, draw.Src)
-		p.imgs = append(p.imgs, imRGBA)
+
+	var prev_src *image.Paletted
+	disposal_length := len(img.Disposal)
+	compositing_op := draw.Src
+
+	last := image.NewRGBA(image.Rect(0, 0, img.Config.Width, img.Config.Height))
+
+	for index, src := range img.Image {
+		bounds := img.Image[index].Bounds()
+		disposal_method := img.Disposal[index]
+		is_disposal_previous := disposal_method == gif.DisposalPrevious
+
+		// if the frame is DisposalPrevious
+		// reset to the last non-DisposalPrevious frame
+		if is_disposal_previous && prev_src != nil {
+			draw.Draw(last, last.Bounds(), prev_src, image.ZP, draw.Over)
+		}
+
+		// if this is a non-DisposalPrevious frame
+		// and the next frame is DisposalPrevious
+		// store the src to reset before the next frame draws
+		if !is_disposal_previous && index+1 < disposal_length && img.Disposal[index+1] == gif.DisposalPrevious {
+			prev_src = src
+		}
+
+		draw.Draw(last, bounds, img.Image[index], image.Point{bounds.Min.X, bounds.Min.Y}, compositing_op)
+		frame := *last
+		frame.Pix = make([]uint8, len(last.Pix))
+		copy(frame.Pix, last.Pix)
+
+		// if this is a non-DisposalPrevious frame
+		// set the compositing operation to Over
+		if !is_disposal_previous {
+			compositing_op = draw.Over
+		}
+
+		// if the frame is DisposalBackground
+		// remove the frame pixels
+		if disposal_method == gif.DisposalBackground {
+			for x := bounds.Min.X; x < bounds.Max.X; x++ {
+				for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+					last.Set(x, y, color.Transparent)
+				}
+			}
+		}
+
+		p.imgs = append(p.imgs, &frame)
 	}
 
 	return nil
@@ -86,10 +125,6 @@ func (p *Image) InitFromImage(data []byte) error {
 	p.imgs = []image.Image{im}
 
 	return nil
-}
-
-type ImageWithInitFromWebP interface {
-	InitFromWebP(data []byte) error
 }
 
 func (p *Image) Init() error {

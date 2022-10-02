@@ -3,7 +3,7 @@ package render
 import (
 	"image"
 
-	"github.com/fogleman/gg"
+	"github.com/tidbyt/gg"
 )
 
 // Sequence renders a list of child widgets in sequence.
@@ -43,16 +43,30 @@ func (s Sequence) FrameCount() int {
 	return fc
 }
 
-func (s Sequence) Paint(bounds image.Rectangle, frameIdx int) image.Image {
+func (s Sequence) PaintBounds(bounds image.Rectangle, frameIdx int) image.Rectangle {
 	fc := 0
 
 	for _, c := range s.Children {
 		if frameIdx < fc+c.FrameCount() {
-			return c.Paint(bounds, frameIdx-fc)
+			return c.PaintBounds(bounds, frameIdx-fc)
 		}
 
 		fc += c.FrameCount()
 	}
 
-	return gg.NewContext(0, 0).Image()
+	return image.Rect(0, 0, 0, 0)
+}
+
+func (s Sequence) Paint(dc *gg.Context, bounds image.Rectangle, frameIdx int) {
+	fc := 0
+
+	for _, c := range s.Children {
+		if frameIdx < fc+c.FrameCount() {
+			dc.Push()
+			c.Paint(dc, bounds, frameIdx-fc)
+			dc.Pop()
+		}
+
+		fc += c.FrameCount()
+	}
 }
