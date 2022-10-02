@@ -5,13 +5,13 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/fogleman/gg"
+	"github.com/tidbyt/gg"
 )
 
 var DefaultPlotColor = color.RGBA{0xff, 0xff, 0xff, 0xff}
 
-// surface fill gets line color with this alpha
-var FillAlpha uint8 = 0x55
+// surface fill gets line color dampened by this factor
+var FillDampFactor uint8 = 0x55
 
 // Plot is a widget that draws a data series.
 //
@@ -23,6 +23,8 @@ var FillAlpha uint8 = 0x55
 // DOC(XLim): Limit X-axis to a range
 // DOC(YLim): Limit Y-axis to a range
 // DOC(Fill): Paint surface between line and X-axis
+// DOC(FillColor): Fill color for Y-values above 0
+// DOC(FillColorInverted): Fill color for Y-values below 0
 //
 // EXAMPLE BEGIN
 // render.Plot(
@@ -69,6 +71,12 @@ type Plot struct {
 
 	// If true, also paint surface between line and X-axis
 	Fill bool `starlark:"fill"`
+
+	// Optional fill color for Y-values above 0
+	FillColor color.Color `starlark:"fill_color"`
+
+	// Optional fill color for Y-values below 0
+	FillColorInverted color.Color `starlark:"fill_color_inverted"`
 
 	invThreshold int
 }
@@ -175,14 +183,16 @@ func (p *Plot) translatePoints() []PathPoint {
 	return points
 }
 
-func colorWithAlpha(c color.Color, a uint8) color.Color {
+func dampenColor(c color.Color, a uint8) color.Color {
 	r, g, b, _ := c.RGBA()
-	return color.RGBA{uint8(r), uint8(g), uint8(b), FillAlpha}
+	return color.RGBA{uint8(r * uint32(a) / 255), uint8(g * uint32(a) / 255), uint8(b * uint32(a) / 255), 0xFF}
 }
 
-func (p Plot) Paint(bounds image.Rectangle, frameIdx int) image.Image {
-	dc := gg.NewContext(p.Width, p.Height)
+func (p Plot) PaintBounds(bounds image.Rectangle, frameIdx int) image.Rectangle {
+	return image.Rect(0, 0, p.Width, p.Height)
+}
 
+func (p Plot) Paint(dc *gg.Context, bounds image.Rectangle, frameIdx int) {
 	// Set line and fill colors
 	var col color.Color
 	col = color.RGBA{0xff, 0xff, 0xff, 0xff}
@@ -193,8 +203,16 @@ func (p Plot) Paint(bounds image.Rectangle, frameIdx int) image.Image {
 	if p.ColorInverted != nil {
 		colInv = p.ColorInverted
 	}
-	fillCol := colorWithAlpha(col, FillAlpha)
-	fillColInv := colorWithAlpha(colInv, FillAlpha)
+
+	fillCol := dampenColor(col, FillDampFactor)
+	if p.FillColor != nil {
+		fillCol = p.FillColor
+	}
+
+	fillColInv := dampenColor(colInv, FillDampFactor)
+	if p.FillColorInverted != nil {
+		fillColInv = p.FillColorInverted
+	}
 
 	pl := &PolyLine{Vertices: p.translatePoints()}
 
@@ -206,13 +224,15 @@ func (p Plot) Paint(bounds image.Rectangle, frameIdx int) image.Image {
 		}
 		if y > p.invThreshold {
 			dc.SetColor(fillColInv)
-			for ; y != p.invThreshold; y-- {
-				dc.SetPixel(x, y)
+			for ; y != p.invThreshold && y >= 0; y-- {
+				tx, ty := dc.TransformPoint(float64(x), float64(y))
+				dc.SetPixel(int(tx), int(ty))
 			}
 		} else {
 			dc.SetColor(fillCol)
-			for ; y <= p.invThreshold; y++ {
-				dc.SetPixel(x, y)
+			for ; y <= p.invThreshold && y <= p.Height; y++ {
+				tx, ty := dc.TransformPoint(float64(x), float64(y))
+				dc.SetPixel(int(tx), int(ty))
 			}
 		}
 	}
@@ -225,10 +245,9 @@ func (p Plot) Paint(bounds image.Rectangle, frameIdx int) image.Image {
 		} else {
 			dc.SetColor(col)
 		}
-		dc.SetPixel(x, y)
+		tx, ty := dc.TransformPoint(float64(x), float64(y))
+		dc.SetPixel(int(tx), int(ty))
 	}
-
-	return dc.Image()
 }
 
 func (p Plot) FrameCount() int {

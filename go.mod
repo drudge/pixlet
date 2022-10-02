@@ -1,31 +1,56 @@
 module tidbyt.dev/pixlet
 
-go 1.16
+go 1.19
 
 require (
-	github.com/antchfx/xmlquery v1.3.11
+	github.com/antchfx/xmlquery v1.3.12
 	github.com/dustin/go-humanize v1.0.0
 	github.com/ericpauley/go-quantize v0.0.0-20200331213906-ae555eb2afa4
-	github.com/fogleman/gg v1.3.0
 	github.com/fsnotify/fsnotify v1.5.4
-	github.com/go-playground/validator/v10 v10.11.0
-	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
-	github.com/google/tink/go v1.4.0
+	github.com/go-playground/validator/v10 v10.11.1
+	github.com/google/pprof v0.0.0-20220829040838-70bd9ae97f40
+	github.com/google/tink/go v1.7.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/lucasb-eyer/go-colorful v1.2.0
 	github.com/mitchellh/hashstructure/v2 v2.0.2
-	github.com/nathan-osman/go-sunrise v1.0.0
+	github.com/nathan-osman/go-sunrise v1.1.0
 	github.com/newm4n/go-dfe v0.0.0-20210113055126-9d5f01722db9
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/pkg/errors v0.9.1
-	github.com/qri-io/starlib v0.5.1-0.20211102160121-ae835e29cd41
+	github.com/qri-io/starlib v0.5.1-0.20220611014110-7fb7ff9ec804
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.5.0
-	github.com/stretchr/testify v1.7.2
-	github.com/tidbyt/go-libwebp v0.0.0-20220302154536-6042ce446e9c
+	github.com/stretchr/testify v1.8.0
+	github.com/tidbyt/gg v0.0.0-20220808163829-95806fa1d427
+	github.com/tidbyt/go-libwebp v0.0.0-20220802221933-1fabc3b46601
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	github.com/zachomedia/go-bdf v0.0.0-20220611021443-a3af701111be
-	go.starlark.net v0.0.0-20220328144851-d1966c6b9fcd
-	golang.org/x/image v0.0.0-20220617043117-41969df76e82
-	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
+	go.starlark.net v0.0.0-20220928063852-5fccb4daaf6d
+	golang.org/x/image v0.0.0-20220902085622-e7cb96979f69
+	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0
+)
+
+require (
+	github.com/PuerkitoBio/goquery v1.5.1 // indirect
+	github.com/andybalholm/cascadia v1.1.0 // indirect
+	github.com/antchfx/xpath v1.2.1 // indirect
+	github.com/chzyer/readline v1.5.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/go-playground/locales v0.14.0 // indirect
+	github.com/go-playground/universal-translator v0.18.0 // indirect
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
+	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/ianlancetaylor/demangle v0.0.0-20220517205856-0058ec4f073c // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
+	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
+	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
+	golang.org/x/text v0.3.7 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

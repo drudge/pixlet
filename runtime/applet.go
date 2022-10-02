@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	starlibgzip "github.com/qri-io/starlib/compress/gzip"
 	starlibbase64 "github.com/qri-io/starlib/encoding/base64"
 	starlibcsv "github.com/qri-io/starlib/encoding/csv"
 	starlibhash "github.com/qri-io/starlib/hash"
@@ -24,6 +25,7 @@ import (
 	"tidbyt.dev/pixlet/render"
 	"tidbyt.dev/pixlet/runtime/modules/animation_runtime"
 	"tidbyt.dev/pixlet/runtime/modules/humanize"
+	"tidbyt.dev/pixlet/runtime/modules/qrcode"
 	"tidbyt.dev/pixlet/runtime/modules/random"
 	"tidbyt.dev/pixlet/runtime/modules/render_runtime"
 	"tidbyt.dev/pixlet/runtime/modules/sunrise"
@@ -74,6 +76,8 @@ func (a *Applet) thread(initializers ...ThreadInitializer) *starlark.Thread {
 	if a.decrypter != nil {
 		a.decrypter.attachToThread(t)
 	}
+
+	random.AttachToThread(t)
 
 	for _, init := range initializers {
 		t = init(t)
@@ -305,6 +309,11 @@ func (a *Applet) loadModule(thread *starlark.Thread, module string) (starlark.St
 	case "xpath.star":
 		return LoadXPathModule()
 
+	case "compress/gzip.star":
+		return starlark.StringDict{
+			starlibgzip.Module.Name: starlibgzip.Module,
+		}, nil
+
 	case "encoding/base64.star":
 		return starlibbase64.LoadModule()
 
@@ -346,6 +355,9 @@ func (a *Applet) loadModule(thread *starlark.Thread, module string) (starlark.St
 
 	case "random.star":
 		return random.LoadModule()
+
+	case "qrcode.star":
+		return qrcode.LoadModule()
 
 	case "assert.star":
 		return starlarktest.LoadAssertModule()

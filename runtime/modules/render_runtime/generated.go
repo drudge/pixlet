@@ -620,6 +620,7 @@ func newMarquee(
 		offset_start     starlark.Int
 		offset_end       starlark.Int
 		scroll_direction starlark.String
+		align			 starlark.String
 	)
 
 	if err := starlark.UnpackArgs(
@@ -631,6 +632,7 @@ func newMarquee(
 		"offset_start?", &offset_start,
 		"offset_end?", &offset_end,
 		"scroll_direction?", &scroll_direction,
+		"align?", & align,
 	); err != nil {
 		return nil, fmt.Errorf("unpacking arguments for Marquee: %s", err)
 	}
@@ -659,6 +661,8 @@ func newMarquee(
 
 	w.ScrollDirection = scroll_direction.GoString()
 
+	w.Align = align.GoString()
+
 	return w, nil
 }
 
@@ -668,7 +672,7 @@ func (w *Marquee) AsRenderWidget() render.Widget {
 
 func (w *Marquee) AttrNames() []string {
 	return []string{
-		"child", "width", "height", "offset_start", "offset_end", "scroll_direction",
+		"child", "width", "height", "offset_start", "offset_end", "scroll_direction", "align",
 	}
 }
 
@@ -698,7 +702,8 @@ func (w *Marquee) Attr(name string) (starlark.Value, error) {
 	case "scroll_direction":
 
 		return starlark.String(w.ScrollDirection), nil
-
+	case "align":
+		return starlark.String(w.Align), nil
 	default:
 		return nil, nil
 	}
@@ -869,6 +874,10 @@ type Plot struct {
 	starlarkXLim starlark.Tuple
 
 	starlarkYLim starlark.Tuple
+
+	starlarkFillColor starlark.String
+
+	starlarkFillColorInverted starlark.String
 }
 
 func newPlot(
@@ -879,14 +888,16 @@ func newPlot(
 ) (starlark.Value, error) {
 
 	var (
-		data           *starlark.List
-		width          starlark.Int
-		height         starlark.Int
-		color          starlark.String
-		color_inverted starlark.String
-		x_lim          starlark.Tuple
-		y_lim          starlark.Tuple
-		fill           starlark.Bool
+		data                *starlark.List
+		width               starlark.Int
+		height              starlark.Int
+		color               starlark.String
+		color_inverted      starlark.String
+		x_lim               starlark.Tuple
+		y_lim               starlark.Tuple
+		fill                starlark.Bool
+		fill_color          starlark.String
+		fill_color_inverted starlark.String
 	)
 
 	if err := starlark.UnpackArgs(
@@ -900,6 +911,8 @@ func newPlot(
 		"x_lim?", &x_lim,
 		"y_lim?", &y_lim,
 		"fill?", &fill,
+		"fill_color?", &fill_color,
+		"fill_color_inverted?", &fill_color_inverted,
 	); err != nil {
 		return nil, fmt.Errorf("unpacking arguments for Plot: %s", err)
 	}
@@ -951,6 +964,24 @@ func newPlot(
 
 	w.Fill = bool(fill)
 
+	w.starlarkFillColor = fill_color
+	if fill_color.Len() > 0 {
+		c, err := render.ParseColor(fill_color.GoString())
+		if err != nil {
+			return nil, fmt.Errorf("fill_color is not a valid hex string: %s", fill_color.String())
+		}
+		w.FillColor = c
+	}
+
+	w.starlarkFillColorInverted = fill_color_inverted
+	if fill_color_inverted.Len() > 0 {
+		c, err := render.ParseColor(fill_color_inverted.GoString())
+		if err != nil {
+			return nil, fmt.Errorf("fill_color_inverted is not a valid hex string: %s", fill_color_inverted.String())
+		}
+		w.FillColorInverted = c
+	}
+
 	return w, nil
 }
 
@@ -960,7 +991,7 @@ func (w *Plot) AsRenderWidget() render.Widget {
 
 func (w *Plot) AttrNames() []string {
 	return []string{
-		"data", "width", "height", "color", "color_inverted", "x_lim", "y_lim", "fill",
+		"data", "width", "height", "color", "color_inverted", "x_lim", "y_lim", "fill", "fill_color", "fill_color_inverted",
 	}
 }
 
@@ -998,6 +1029,14 @@ func (w *Plot) Attr(name string) (starlark.Value, error) {
 	case "fill":
 
 		return starlark.Bool(w.Fill), nil
+
+	case "fill_color":
+
+		return w.starlarkFillColor, nil
+
+	case "fill_color_inverted":
+
+		return w.starlarkFillColorInverted, nil
 
 	default:
 		return nil, nil
@@ -1544,7 +1583,7 @@ func newWrappedText(
 		width       starlark.Int
 		linespacing starlark.Int
 		color       starlark.String
-		align   starlark.String
+		align       starlark.String
 	)
 
 	if err := starlark.UnpackArgs(
@@ -1581,6 +1620,7 @@ func newWrappedText(
 		}
 		w.Color = c
 	}
+
 	w.Align = align.GoString()
 
 	return w, nil
@@ -1622,6 +1662,10 @@ func (w *WrappedText) Attr(name string) (starlark.Value, error) {
 	case "color":
 
 		return w.starlarkColor, nil
+
+	case "align":
+
+		return starlark.String(w.Align), nil
 
 	default:
 		return nil, nil
