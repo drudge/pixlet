@@ -9,7 +9,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
 
@@ -28,7 +28,7 @@ jobs:
     name: Build and Test Release Artifacts
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-22.04, macos-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -43,11 +43,22 @@ jobs:
         with:
           node-version: "16"
 
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        if: matrix.os == 'windows-latest'
+        with:
+          update: true
+          install: >-
+            make
+            mingw-w64-x86_64-go
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-libwebp
+
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-22.04'
         run: sudo ./scripts/setup-linux.sh
 
       - name: Install macOS dependencies
@@ -62,16 +73,35 @@ jobs:
 
       - name: Build
         run: make build
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-latest'
+
+      - name: Build Windows
+        shell: msys2 {0}
+        run: make build
+        if: matrix.os == 'windows-latest'
 
       - name: Test
         run: make test
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-latest'
+
+      - name: Test Windows
+        shell: msys2 {0}
+        run: make test
+        if: matrix.os == 'windows-latest'
 
       - name: Set pixlet version
         id: vars
         run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-latest'
+
+      - name: Set Windows pixlet version
+        id: windowsvars 
+        shell: msys2 {0}
+        run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+        if: matrix.os == 'windows-latest'
 
       - name: Build Release Linux
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-22.04'
         run: make release-linux
         env:
           PIXLET_VERSION: ${{ steps.vars.outputs.tag }}
@@ -82,6 +112,13 @@ jobs:
         env:
           PIXLET_VERSION: ${{ steps.vars.outputs.tag }}
 
+      - name: Build Release Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: make release-windows
+        env:
+          PIXLET_VERSION: ${{ steps.windowsvars.outputs.tag }}
+
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -90,7 +127,7 @@ jobs:
 
   create-release:
     name: Create Github Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     environment: release
     needs: build-and-test-release
     if: startsWith(github.ref, 'refs/tags/')
@@ -110,13 +147,16 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: release-artifacts
+          path: build
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v3
+        uses: goreleaser/goreleaser-action@v4
         with:
-          version: v1.7.0
+          distribution: goreleaser-pro
+          version: v1.12.3
           args: release
         env:
+          GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
           GITHUB_TOKEN: ${{ secrets.TIDBYT_GITHUB_TOKEN }}
           DISCORD_WEBHOOK_ID: ${{ secrets.DISCORD_WEBHOOK_ID }}
           DISCORD_WEBHOOK_TOKEN: ${{ secrets.DISCORD_WEBHOOK_TOKEN }}

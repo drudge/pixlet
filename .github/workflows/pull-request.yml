@@ -7,7 +7,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
 
@@ -26,7 +26,7 @@ jobs:
     name: Build and Test
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-22.04, macos-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -41,11 +41,22 @@ jobs:
         with:
           node-version: "16"
 
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        if: matrix.os == 'windows-latest'
+        with:
+          update: true
+          install: >-
+            make
+            mingw-w64-x86_64-go
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-libwebp
+
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-22.04'
         run: sudo apt-get install -y libwebp-dev
 
       - name: Install macOS dependencies
@@ -60,6 +71,18 @@ jobs:
 
       - name: Build
         run: make build
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-latest'
+
+      - name: Build Windows
+        shell: msys2 {0}
+        run: make build
+        if: matrix.os == 'windows-latest'
 
       - name: Test
         run: make test
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-latest'
+
+      - name: Test Windows
+        shell: msys2 {0}
+        run: make test
+        if: matrix.os == 'windows-latest'
