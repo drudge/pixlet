@@ -14,6 +14,7 @@ import (
 
 	"github.com/nfnt/resize"
 	"github.com/tidbyt/gg"
+	"github.com/tidbyt/go-libwebp/webp"
 )
 
 // Image renders the binary image data passed via `src`. Supported
