@@ -72,7 +72,9 @@ func runBuildifier(args []string, lint string, mode string, format string, recur
 	}
 
 	diagnosticsOutput := diagnostics.Format(format, verbose)
-	if format != "" {
+	if format == "off" {
+		// Do nothing.
+	} else if format != "" {
 		// Explicitly provided --format means the diagnostics are printed to stdout
 		fmt.Printf(diagnosticsOutput)
 		// Exit code should be set to 0 so that other tools know they can safely parse the json
@@ -164,6 +166,7 @@ func defaultWarnings() []string {
 }
 
 var disabledWarnings = map[string]bool{
+	"confusing-name":            true, // disables confusing name warnings
 	"function-docstring":        true, // disables docstring warnings
 	"function-docstring-header": true, // disables docstring warnings
 	"function-docstring-args":   true, // disables docstring warnings
@@ -175,6 +178,7 @@ var disabledWarnings = map[string]bool{
 	"native-java":               true, // disables native java rules
 	"native-proto":              true, // disables native proto rules
 	"native-py":                 true, // disables native python rules
+	"module-docstring":          true, // disables module docstring
 	"string-iteration":          true, // disables string iteration warning
 	"unsorted-dict-items":       true, // disables dictionary sorting
 }
