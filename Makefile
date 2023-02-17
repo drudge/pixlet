@@ -5,15 +5,17 @@ LDFLAGS_WASM = -ldflags="-s -w -X 'tidbyt.dev/pixlet/cmd.Version=$(GIT_COMMIT)'"
 ifeq ($(OS),Windows_NT)
 	BINARY = pixlet.exe
 	LDFLAGS = -ldflags="-s -extldflags=-static -X 'tidbyt.dev/pixlet/cmd.Version=$(GIT_COMMIT)'"
+	TAGS = -tags timetzdata
 else
 	BINARY = pixlet
 	LDFLAGS = -ldflags="-X 'tidbyt.dev/pixlet/cmd.Version=$(GIT_COMMIT)'"
+	TAGS =
 endif
 
 all: build
 
 test:
-	go test -v -cover ./...
+	go test $(TAGS) -v -cover ./...
 
 clean:
 	rm -f $(BINARY)
@@ -24,7 +26,7 @@ bench:
 	go test -benchmem -benchtime=20s -bench BenchmarkRunAndRender tidbyt.dev/pixlet/encode
 
 build:
-	 go build $(LDFLAGS) -o $(BINARY) tidbyt.dev/pixlet
+	 go build $(LDFLAGS) $(TAGS) -o $(BINARY) tidbyt.dev/pixlet
 
 build-wasm:
 	GOOS=js GOARCH=wasm go build $(LDFLAGS_WASM) -o $(BINARY_WASM) tidbyt.dev/pixlet/wasm/main

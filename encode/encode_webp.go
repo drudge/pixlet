@@ -16,7 +16,7 @@ const (
 
 // Renders a screen to WebP. Optionally pass filters for
 // postprocessing each individual frame.
-func (s *Screens) EncodeWebP(filters ...ImageFilter) ([]byte, error) {
+func (s *Screens) EncodeWebP(maxDuration int, filters ...ImageFilter) ([]byte, error) {
 	images, err := s.render(filters...)
 	if err != nil {
 		return nil, err
@@ -38,10 +38,23 @@ func (s *Screens) EncodeWebP(filters ...ImageFilter) ([]byte, error) {
 	}
 	defer anim.Close()
 
-	frameDuration := time.Duration(s.delay) * time.Millisecond
+	remainingDuration := time.Duration(maxDuration) * time.Millisecond
 	for _, im := range images {
+		frameDuration := time.Duration(s.delay) * time.Millisecond
+
+		if maxDuration > 0 {
+			if frameDuration > remainingDuration {
+				frameDuration = remainingDuration
+			}
+			remainingDuration -= frameDuration
+		}
+
 		if err := anim.AddFrame(im, frameDuration); err != nil {
 			return nil, errors.Wrap(err, "adding frame")
+		}
+
+		if maxDuration > 0 && remainingDuration <= 0 {
+			break
 		}
 	}
 
